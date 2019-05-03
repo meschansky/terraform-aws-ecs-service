@@ -56,6 +56,7 @@ resource "aws_alb_listener" "service_http" {
 }
 
 resource "aws_alb_target_group" "service" {
+  count = "${local.enable_lb}"
   name     = "${var.service_identifier}-${var.task_identifier}"
   port     = "${var.app_port}"
   protocol = "HTTP"

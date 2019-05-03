@@ -89,12 +89,12 @@ variable "network_mode" {
 }
 
 variable "service_identifier" {
-  description = "Unique identifier for this pganalyze service (used in log prefix, service name etc.)"
+  description = "Unique identifier for this service (used in log prefix, service name etc.)"
   default     = "service"
 }
 
 variable "task_identifier" {
-  description = "Unique identifier for this pganalyze task (used in log prefix, service name etc.)"
+  description = "Unique identifier for this task (used in log prefix, service name etc.)"
   default     = "task"
 }
 

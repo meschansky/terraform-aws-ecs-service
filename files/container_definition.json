@@ -7,11 +7,13 @@
         "essential": true,
         "memoryReservation": ${memory_reservation},
         "portMappings": [
+  %{if app_port != ""}
           {
             "containerPort": ${app_port},
             "hostPort": 0,
             "protocol": "tcp"
           }
+  %{ endif }
         ],
         ${command_override}
         "environment": ${environment},

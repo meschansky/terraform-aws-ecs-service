@@ -1,5 +1,6 @@
 locals {
   docker_command_override = "${length(var.docker_command) > 0 ? "\"command\": [\"${var.docker_command}\"]," : ""}"
+  enable_lb               = "${(var.alb_enable_https || var.alb_enable_http) ? 1 : 0}"
 }
 
 data "template_file" "container_definition" {
@@ -22,6 +23,13 @@ data "template_file" "container_definition" {
   }
 }
 
+
+resource "null_resource" "show_task_definition_template" {
+  triggers = {
+    json = "${data.template_file.container_definition.rendered}"
+  }
+}
+
 resource "aws_ecs_task_definition" "task" {
   family                = "${var.service_identifier}-${var.task_identifier}"
   container_definitions = "${data.template_file.container_definition.rendered}"
@@ -34,7 +42,8 @@ resource "aws_ecs_task_definition" "task" {
   }
 }
 
-resource "aws_ecs_service" "service" {
+resource "aws_ecs_service" "service_with_lb" {
+  count = "${local.enable_lb}"
   name                               = "${var.service_identifier}-${var.task_identifier}-service"
   cluster                            = "${var.ecs_cluster_arn}"
   task_definition                    = "${aws_ecs_task_definition.task.arn}"
@@ -56,10 +65,33 @@ resource "aws_ecs_service" "service" {
   }
 
   depends_on = [
+    "aws_ecs_task_definition.task",
     "aws_alb_target_group.service",
     "aws_alb_listener.service_https",
     "aws_alb_listener.service_http",
-    "aws_iam_role.service",
+    "aws_iam_role.service"
+  ]
+}
+
+resource "aws_ecs_service" "service" {
+  count = "${local.enable_lb ? 0 : 1}"
+  name                               = "${var.service_identifier}-${var.task_identifier}-service"
+  cluster                            = "${var.ecs_cluster_arn}"
+  task_definition                    = "${aws_ecs_task_definition.task.arn}"
+  desired_count                      = "${var.ecs_desired_count}"
+  #iam_role                           = "${aws_iam_role.service.arn}"
+  deployment_maximum_percent         = "${var.ecs_deployment_maximum_percent}"
+  deployment_minimum_healthy_percent = "${var.ecs_deployment_minimum_healthy_percent}"
+  health_check_grace_period_seconds  = "${var.ecs_health_check_grace_period}"
+
+  ordered_placement_strategy {
+    type  = "${var.ecs_placement_strategy_type}"
+    field = "${var.ecs_placement_strategy_field}"
+  }
+
+  depends_on = [
+    "aws_ecs_task_definition.task",
+    "aws_iam_role.service"
   ]
 }
 
