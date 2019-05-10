@@ -32,7 +32,7 @@ resource "aws_alb" "service" {
 resource "aws_alb_listener" "service_https" {
   count             = "${var.alb_enable_https ? 1 : 0}"
   load_balancer_arn = "${aws_alb.service.arn}"
-  port              = "443"
+  port              = "${var.alb_https_listener_port}"
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-2015-05"
   certificate_arn   = "${data.aws_acm_certificate.alb.arn}"
@@ -46,7 +46,7 @@ resource "aws_alb_listener" "service_https" {
 resource "aws_alb_listener" "service_http" {
   count             = "${var.alb_enable_http ? 1 : 0}"
   load_balancer_arn = "${aws_alb.service.arn}"
-  port              = "80"
+  port              = "${var.alb_http_listener_port}"
   protocol          = "HTTP"
 
   default_action {
@@ -100,20 +100,20 @@ resource "aws_security_group" "alb" {
 resource "aws_security_group_rule" "alb_ingress_https" {
   count             = "${var.alb_enable_https ? 1 : 0}"
   type              = "ingress"
-  from_port         = 443
-  to_port           = 443
+  from_port         = "${var.alb_https_listener_port}"
+  to_port           = "${var.alb_https_listener_port}"
   protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
+  cidr_blocks       = "${var.alb_allow_ingress_nets}"
   security_group_id = "${aws_security_group.alb.id}"
 }
 
 resource "aws_security_group_rule" "alb_ingress_http" {
   count             = "${var.alb_enable_http ? 1 : 0}"
   type              = "ingress"
-  from_port         = 80
-  to_port           = 80
+  from_port         = "${var.alb_http_listener_port}"
+  to_port           = "${var.alb_http_listener_port}"
   protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
+  cidr_blocks       = "${var.alb_allow_ingress_nets}"
   security_group_id = "${aws_security_group.alb.id}"
 }
 

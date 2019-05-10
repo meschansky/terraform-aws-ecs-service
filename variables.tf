@@ -126,6 +126,23 @@ variable "alb_enable_http" {
   default     = "false"
 }
 
+variable "alb_http_listener_port" {
+  description = "Set listener http port in ALB (default 80)"
+  default     = "80"
+}
+
+variable "alb_https_listener_port" {
+  description = "Set listener http port in ALB (default 80)"
+  default     = "443"
+}
+
+
+variable "alb_allow_ingress_nets" {
+  description = "List of CIDRs to allow access to the ELB listener. (default: [\"0.0.0.0/0\"])"
+  type = "list"
+  default = ["0.0.0.0/0"]
+}
+
 variable "alb_internal" {
   description = "Configure ALB as internal-only (default false)"
   default     = "false"
@@ -143,14 +160,18 @@ variable "app_port" {
   default     = ""
 }
 
-variable "ecs_placement_strategy_type" {
-  description = "Placement strategy to use when distributing tasks (default binpack)"
-  default     = "binpack"
+variable "ecs_placement_strategy" {
+  description = "Placement strategy to use when distributing tasks (default: type: binpack, field: memory)"
+  type = "list"
+  default = [{
+    type = "binpack"
+    field = "memory"
+  }]
 }
 
-variable "ecs_placement_strategy_field" {
-  description = "Container metadata field to use when distributing tasks (default memory)"
-  default     = "memory"
+variable "ecs_scheduling_strategy" {
+  description = "The scheduling strategy to use for the service. The valid values are REPLICA and DAEMON. (defaults REPLICA)"
+  default     = "REPLICA"
 }
 
 variable "ecs_log_retention" {
@@ -220,4 +241,9 @@ variable "alb_stickiness_enabled" {
 variable "alb_cookie_duration" {
   description = "Duration of ALB session stickiness cookie in seconds (default 86400)"
   default     = "86400"
+}
+
+variable "task_placement_constraints_expr" {
+  description = "A string of placement constraints rules that are taken into consideration during task placement for memberOf type constraint (default: false)"
+  default     = ""
 }

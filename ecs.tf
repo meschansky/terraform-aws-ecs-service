@@ -35,6 +35,10 @@ resource "aws_ecs_task_definition" "task" {
   container_definitions = "${data.template_file.container_definition.rendered}"
   network_mode          = "${var.network_mode}"
   task_role_arn         = "${aws_iam_role.task.arn}"
+  placement_constraints {
+    type                = "memberOf"
+    expression          = "${var.task_placement_constraints_expr}"
+  }
 
   volume {
     name      = "data"
@@ -53,10 +57,9 @@ resource "aws_ecs_service" "service_with_lb" {
   deployment_minimum_healthy_percent = "${var.ecs_deployment_minimum_healthy_percent}"
   health_check_grace_period_seconds  = "${var.ecs_health_check_grace_period}"
 
-  ordered_placement_strategy {
-    type  = "${var.ecs_placement_strategy_type}"
-    field = "${var.ecs_placement_strategy_field}"
-  }
+  ordered_placement_strategy         =  "${var.ecs_placement_strategy}"
+
+  scheduling_strategy = "${var.ecs_scheduling_strategy}"
 
   load_balancer {
     target_group_arn = "${aws_alb_target_group.service.arn}"
@@ -84,10 +87,9 @@ resource "aws_ecs_service" "service" {
   deployment_minimum_healthy_percent = "${var.ecs_deployment_minimum_healthy_percent}"
   health_check_grace_period_seconds  = "${var.ecs_health_check_grace_period}"
 
-  ordered_placement_strategy {
-    type  = "${var.ecs_placement_strategy_type}"
-    field = "${var.ecs_placement_strategy_field}"
-  }
+  ordered_placement_strategy         =  "${var.ecs_placement_strategy}"
+
+  scheduling_strategy = "${var.ecs_scheduling_strategy}"
 
   depends_on = [
     "aws_ecs_task_definition.task",
