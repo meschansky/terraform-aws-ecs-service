@@ -16,7 +16,6 @@ data "template_file" "container_definition" {
     command_override      = "${local.docker_command_override}"
     environment           = "${jsonencode(var.docker_environment)}"
     mount_points          = "${jsonencode(var.docker_mount_points)}"
-    awslogs_region        = "${data.aws_region.region.name}"
     awslogs_group         = "${var.service_identifier}-${var.task_identifier}"
     awslogs_region        = "${data.aws_region.region.name}"
     awslogs_stream_prefix = "${var.service_identifier}"
@@ -56,10 +55,8 @@ resource "aws_ecs_service" "service_with_lb" {
   deployment_maximum_percent         = "${var.ecs_deployment_maximum_percent}"
   deployment_minimum_healthy_percent = "${var.ecs_deployment_minimum_healthy_percent}"
   health_check_grace_period_seconds  = "${var.ecs_health_check_grace_period}"
-
-  ordered_placement_strategy         =  "${var.ecs_placement_strategy}"
-
-  scheduling_strategy = "${var.ecs_scheduling_strategy}"
+  ordered_placement_strategy         = "${var.ecs_placement_strategy}"
+  scheduling_strategy                = "${var.ecs_scheduling_strategy}"
 
   load_balancer {
     target_group_arn = "${aws_alb_target_group.service.arn}"
