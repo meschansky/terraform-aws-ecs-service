@@ -249,3 +249,13 @@ variable "task_placement_constraints_expr" {
   default     = ""
 }
 
+variable "create_service_registry" {
+  default     = false
+  description = "Flag to create a new service registry"
+}
+
+variable "service_registry_namespace" {
+  description     = "DNS namespace for the service registry"
+  default         = ""
+}
+

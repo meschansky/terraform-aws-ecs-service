@@ -1,6 +1,44 @@
 locals {
   docker_command_override = length(var.docker_command) > 0 ? "\"command\": [\"${var.docker_command}\"]," : ""
   enable_lb               = var.alb_enable_https || var.alb_enable_http ? true : false
+  service_registries      = var.create_service_registry ? [
+    {
+      registry_arn        = aws_service_discovery_service.this[0].arn
+    }] : []
+  load_balancer           = local.enable_lb ? [
+    {
+      target_group_arn = aws_alb_target_group.service[0].arn
+      container_name   = "${var.service_identifier}-${var.task_identifier}"
+      container_port   = var.app_port
+    }
+  ] : []
+}
+
+resource "aws_service_discovery_private_dns_namespace" "this" {
+  count       = var.create_service_registry ? 1 : 0
+  name        = var.service_registry_namespace
+  description = "DNS namespace"
+  vpc         = "${var.vpc_id}"
+}
+
+resource "aws_service_discovery_service" "this" {
+  count       = var.create_service_registry ? 1 : 0
+  name = "this"
+
+  dns_config {
+    namespace_id = "${aws_service_discovery_private_dns_namespace.this[0].id}"
+
+    dns_records {
+      ttl  = 10
+      type = "A"
+    }
+
+    routing_policy = "MULTIVALUE"
+  }
+
+  health_check_custom_config {
+    failure_threshold = 3
+  }
 }
 
 data "template_file" "container_definition" {
@@ -44,8 +82,7 @@ resource "aws_ecs_task_definition" "task" {
   }
 }
 
-resource "aws_ecs_service" "service_with_lb" {
-  count                              = local.enable_lb ? 1 : 0
+resource "aws_ecs_service" "service" {
   name                               = "${var.service_identifier}-${var.task_identifier}-service"
   cluster                            = var.ecs_cluster_arn
   task_definition                    = aws_ecs_task_definition.task.arn
@@ -57,23 +94,26 @@ resource "aws_ecs_service" "service_with_lb" {
   dynamic "ordered_placement_strategy" {
     for_each = var.ecs_placement_strategy
     content {
-      # TF-UPGRADE-TODO: The automatic upgrade tool can't predict
-      # which keys might be set in maps assigned here, so it has
-      # produced a comprehensive set here. Consider simplifying
-      # this after confirming which keys can be set in practice.
-
       field = lookup(ordered_placement_strategy.value, "field", null)
       type  = ordered_placement_strategy.value.type
     }
   }
   scheduling_strategy = var.ecs_scheduling_strategy
 
-  load_balancer {
-    target_group_arn = aws_alb_target_group.service[0].arn
-    container_name   = "${var.service_identifier}-${var.task_identifier}"
-    container_port   = var.app_port
+  dynamic "load_balancer" {
+    for_each = local.load_balancer
+    content {
+      target_group_arn = load_balancer.value.target_group_arn
+      container_name   = load_balancer.value.container_name
+      container_port   = load_balancer.value.container_port
+    }
   }
-
+  dynamic "service_registries" {
+    for_each = local.service_registries
+    content {
+      registry_arn = service_registries.registry_arn
+    }
+  }
   depends_on = [
     aws_ecs_task_definition.task,
     aws_alb_target_group.service,
@@ -83,38 +123,6 @@ resource "aws_ecs_service" "service_with_lb" {
   ]
 }
 
-resource "aws_ecs_service" "service" {
-  count           = local.enable_lb ? 0 : 1
-  name            = "${var.service_identifier}-${var.task_identifier}-service"
-  cluster         = var.ecs_cluster_arn
-  task_definition = aws_ecs_task_definition.task.arn
-  desired_count   = var.ecs_desired_count
-
-  #iam_role                           = "${aws_iam_role.service.arn}"
-  deployment_maximum_percent         = var.ecs_deployment_maximum_percent
-  deployment_minimum_healthy_percent = var.ecs_deployment_minimum_healthy_percent
-  health_check_grace_period_seconds  = var.ecs_health_check_grace_period
-
-  dynamic "ordered_placement_strategy" {
-    for_each = var.ecs_placement_strategy
-    content {
-      # TF-UPGRADE-TODO: The automatic upgrade tool can't predict
-      # which keys might be set in maps assigned here, so it has
-      # produced a comprehensive set here. Consider simplifying
-      # this after confirming which keys can be set in practice.
-
-      field = lookup(ordered_placement_strategy.value, "field", null)
-      type  = ordered_placement_strategy.value.type
-    }
-  }
-
-  scheduling_strategy = var.ecs_scheduling_strategy
-
-  depends_on = [
-    aws_ecs_task_definition.task,
-    aws_iam_role.service,
-  ]
-}
 
 resource "aws_cloudwatch_log_group" "task" {
   name              = "${var.service_identifier}-${var.task_identifier}"
