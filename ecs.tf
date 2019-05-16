@@ -23,7 +23,7 @@ resource "aws_service_discovery_private_dns_namespace" "this" {
 
 resource "aws_service_discovery_service" "this" {
   count       = var.create_service_registry ? 1 : 0
-  name = "this"
+  name = "${var.service_identifier}-${var.task_identifier}"
 
   dns_config {
     namespace_id = "${aws_service_discovery_private_dns_namespace.this[0].id}"
@@ -85,9 +85,9 @@ resource "aws_ecs_task_definition" "task" {
 resource "aws_ecs_service" "service" {
   name                               = "${var.service_identifier}-${var.task_identifier}-service"
   cluster                            = var.ecs_cluster_arn
-  task_definition                    = aws_ecs_task_definition.task.arn
+  task_definition                     = aws_ecs_task_definition.task.arn
   desired_count                      = var.ecs_desired_count
-  iam_role                           = local.enable_lb ? aws_iam_role.service.arn : null
+  iam_role                           = local.enable_lb && var.network_mode != "awsvpc" ? aws_iam_role.service.arn : null
   deployment_maximum_percent         = var.ecs_deployment_maximum_percent
   deployment_minimum_healthy_percent = var.ecs_deployment_minimum_healthy_percent
   health_check_grace_period_seconds  = var.ecs_health_check_grace_period
@@ -111,9 +111,19 @@ resource "aws_ecs_service" "service" {
   dynamic "service_registries" {
     for_each = local.service_registries
     content {
-      registry_arn = service_registries.registry_arn
+      registry_arn = service_registries.value.registry_arn
     }
   }
+
+  dynamic "network_configuration" {
+    for_each = var.network_configuration
+    content {
+      subnets = network_configuration.value.subnets
+      security_groups = network_configuration.value.security_groups
+      assign_public_ip = network_configuration.value.assign_public_ip
+    }
+  }
+
   depends_on = [
     aws_ecs_task_definition.task,
     aws_alb_target_group.service,

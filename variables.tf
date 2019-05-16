@@ -88,6 +88,12 @@ variable "network_mode" {
   default     = "bridge"
 }
 
+variable "network_configuration" {
+  description = " The network configuration {subnets, security_groups, assign_public_ip} required for the awsvpc network_mode. (default [])"
+  type        = list
+  default     = []
+}
+
 variable "service_identifier" {
   description = "Unique identifier for this service (used in log prefix, service name etc.)"
   default     = "service"
@@ -255,7 +261,6 @@ variable "create_service_registry" {
 }
 
 variable "service_registry_namespace" {
-  description     = "DNS namespace for the service registry"
-  default         = ""
+  description     = "DNS namespace for the service registry. Required if create_service_registry is true."
+  default         = null
 }
-
