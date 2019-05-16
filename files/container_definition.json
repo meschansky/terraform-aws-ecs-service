@@ -10,7 +10,6 @@
   %{if app_port != ""}
           {
             "containerPort": ${app_port},
-            "hostPort": 0,
             "protocol": "tcp"
           }
   %{ endif }

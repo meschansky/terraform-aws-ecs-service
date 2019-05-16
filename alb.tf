@@ -56,11 +56,12 @@ resource "aws_alb_listener" "service_http" {
 }
 
 resource "aws_alb_target_group" "service" {
-  count    = local.enable_lb ? 1 : 0
-  name     = "${var.service_identifier}-${var.task_identifier}"
-  port     = var.app_port
-  protocol = "HTTP"
-  vpc_id   = data.aws_vpc.vpc.id
+  count       = local.enable_lb ? 1 : 0
+  name        = "${var.service_identifier}-${var.task_identifier}"
+  port        = var.app_port
+  protocol    = "HTTP"
+  vpc_id      = data.aws_vpc.vpc.id
+  target_type = var.network_mode == "awsvpc" ? "ip" : "instance"
 
   health_check {
     interval            = var.alb_healthcheck_interval
